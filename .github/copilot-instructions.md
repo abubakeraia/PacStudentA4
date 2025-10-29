@@ -2,7 +2,7 @@
 - Project name: 13957511_Assess3
 - Unity version: Unity 6000.0.54f1
 - Active game object:
-  - Name: TopCentre
+  - Name: Managers
   - Tag: Untagged
-  - Layer: UI
+  - Layer: Default
 <!-- UNITY CODE ASSIST INSTRUCTIONS END -->
