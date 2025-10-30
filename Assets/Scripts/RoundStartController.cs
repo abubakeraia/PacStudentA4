@@ -7,7 +7,7 @@ public class RoundStartController : MonoBehaviour
     public HUDController hud;
     public BgmPlayer bgm;
     public PacStudentController pac;
-    public GhostController[] ghosts;
+    public GhostStateController[] ghosts;
     public GameManager gm;
 
     [Header("UI")]
@@ -70,7 +70,7 @@ public class RoundStartController : MonoBehaviour
                 if (g.animator) g.animator.speed = on ? 0f : 1f;
 
                 var rb = g.GetComponent<Rigidbody2D>();
-                if (rb) { if (on) { rb.velocity = Vector2.zero; rb.angularVelocity = 0f; } }
+                if (rb) { if (on) { rb.linearVelocity = Vector2.zero; rb.angularVelocity = 0f; } }
                 var ai = g.GetComponent<MonoBehaviour>();
                 if (ai && ai != g) ai.enabled = !on;
             }

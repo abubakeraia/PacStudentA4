@@ -32,7 +32,7 @@ public class ScareManager : MonoBehaviour
 
     IEnumerator RunScared()
     {
-        var ghosts = FindObjectsOfType<GhostController>();
+        var ghosts = FindObjectsOfType<GhostStateController>();
         foreach (var g in ghosts) if (!g.IsDead) g.SetScared();
 
         if (bgm) bgm.PlayScaredLoop();

@@ -24,7 +24,6 @@ public class PacStudentController : MonoBehaviour
     [Header("Animator")]
     public Animator animator;
 
-    [Header("Debug (read-only)")]
     public Dir lastInput = Dir.None;
     public Dir currentInput = Dir.None;
 

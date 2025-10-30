@@ -13,7 +13,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Actors")]
     public PacStudentController pac;
-    public GhostController[] ghosts;
+    public GhostStateController[] ghosts;
     public BgmPlayer bgm;
 
     [Header("Pellets")]
@@ -32,8 +32,6 @@ public class GameManager : MonoBehaviour
     bool hasStartedRound = false;
     bool hasEatenAnyPellet = false;
     bool pelletCountInitialized = false;
-
-    public bool IsPlaying => playing;
 
     void Start()
     {
@@ -147,7 +145,7 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(startSceneName);
     }
 
-    public void Freeze(bool on)
+    void Freeze(bool on)
     {
         if (pac)
         {
@@ -162,7 +160,7 @@ public class GameManager : MonoBehaviour
                 if (!g) continue;
                 if (g.animator) g.animator.speed = on ? 0f : 1f;
                 var rb = g.GetComponent<Rigidbody2D>();
-                if (rb && on) { rb.velocity = Vector2.zero; rb.angularVelocity = 0f; }
+                if (rb && on) { rb.linearVelocity = Vector2.zero; rb.angularVelocity = 0f; }
             }
         }
     }
