@@ -232,4 +232,33 @@ public class PacStudentController : MonoBehaviour
             default: return Vector3.zero;
         }
     }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.gameObject.layer == LayerMask.NameToLayer("Teleporter"))
+        {
+            if (other.name.Contains("Left"))
+            {
+                TeleportTo("Right");
+            }
+            else if (other.name.Contains("Right"))
+            {
+                TeleportTo("Left");
+            }
+        }
+    }
+
+    void TeleportTo(string side)
+    {
+        var target = GameObject.Find("Teleporter" + side);
+        if (!target) return;
+
+        Vector3 pos = transform.position;
+        Vector3 dest = target.transform.position;
+        dest.z = pos.z;
+
+        transform.position = dest;
+    }
+
+
 }

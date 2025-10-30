@@ -76,7 +76,7 @@ public class GhostController : MonoBehaviour
     {
         if (!pac) return;
 
-        if (mode != Mode.Dead) SyncWithScareManager();
+        if (mode != Mode.Dead) SyncPhase();
 
         if (mode == Mode.Dead)
         {
@@ -101,7 +101,7 @@ public class GhostController : MonoBehaviour
             transform.position = toWorld;
     }
 
-    void SyncWithScareManager()
+    void SyncPhase()
     {
         int phase = ScareManagerPhase();
         if (phase == lastPhase) return;
@@ -142,7 +142,7 @@ public class GhostController : MonoBehaviour
             {
                 transform.position = rp;
                 ReviveAccordingToPhase();
-                ResetGridAt(transform.position);
+                ResetGrid(transform.position);
                 hasExitedHouse = false;
                 TryResumeMusic();
             }
@@ -156,12 +156,15 @@ public class GhostController : MonoBehaviour
             if (!ghostHouseArea.OverlapPoint(transform.position)) hasExitedHouse = true;
             else
             {
+                transform.position = GridToWorld(WorldToGrid(transform.position));
+                ResetGrid(transform.position);
+
                 Vector3 exitTarget =
                     ((ghostId == 1 || ghostId == 3) && topExitPoint) ? topExitPoint.position :
                     ((ghostId == 2 || ghostId == 4) && bottomExitPoint) ? bottomExitPoint.position :
                     transform.position;
 
-                MoveOneStepTowardWorld(exitTarget, false, false);
+                MoveOneStepTowardWorld(exitTarget, false, false, true);
                 return;
             }
         }
@@ -237,7 +240,7 @@ public class GhostController : MonoBehaviour
         StartStepTo(best);
     }
 
-    void MoveOneStepTowardWorld(Vector3 worldTarget, bool canPassWalls, bool forbidEnteringHouse = true)
+    void MoveOneStepTowardWorld(Vector3 worldTarget, bool canPassWalls, bool forbidEnteringHouse, bool allowReverse)
     {
         Vector2Int targetCell = WorldToGrid(worldTarget);
         Vector2Int delta = targetCell - gridPos;
@@ -252,7 +255,7 @@ public class GhostController : MonoBehaviour
             {
                 foreach (Dir d in new[] { Dir.Up, Dir.Left, Dir.Down, Dir.Right })
                 {
-                    if (d == Opposite(currentDir)) continue;
+                    if (!allowReverse && d == Opposite(currentDir)) continue;
                     var n2 = gridPos + ToDelta(d);
                     if (IsCellWalkable(n2, d, forbidEnteringHouse)) { next = n2; dir = d; break; }
                 }
@@ -291,15 +294,21 @@ public class GhostController : MonoBehaviour
 
     bool IsCellWalkable(Vector2Int cell, Dir enteringDir, bool forbidEnteringHouse)
     {
+        if (mode == Mode.Dead) return true;
+
         Vector2 center = GridToWorld(cell);
         float probe = cellSize * 0.48f;
+        int mask = wallMask | teleporterMask;
 
-        if (mode != Mode.Dead && teleporterMask.value != 0)
-            if (Physics2D.OverlapBox(center, new Vector2(probe, probe), 0f, teleporterMask) != null)
-                return false;
-
-        if (mode != Mode.Dead && Physics2D.OverlapBox(center, new Vector2(probe, probe), 0f, wallMask) != null)
+        if (Physics2D.OverlapBox(center, new Vector2(probe, probe), 0f, mask) != null)
             return false;
+
+        Vector2 from = GridToWorld(gridPos);
+        Vector2 dir = (center - from).normalized;
+        float dist = Vector2.Distance(from, center);
+        Vector2 castSize = new Vector2(cellSize * 0.45f, cellSize * 0.45f);
+        var hit = Physics2D.BoxCast(from, castSize, 0f, dir, dist, mask);
+        if (hit.collider != null) return false;
 
         if (forbidEnteringHouse && hasExitedHouse && ghostHouseArea && ghostHouseArea.OverlapPoint(center))
             return false;
@@ -436,22 +445,21 @@ public class GhostController : MonoBehaviour
         animator.SetBool(hRecov, mode == Mode.Recovering);
     }
 
-    void ResetGridAt(Vector3 world)
+    void ResetGrid(Vector3 world)
     {
         gridPos = WorldToGrid(world);
         fromWorld = toWorld = GridToWorld(gridPos);
         t = 1f;
-        UpdateAnimatorDir(currentDir);
     }
 
     public bool IsDead => mode == Mode.Dead;
     public bool IsScared => mode == Mode.Scared;
     public bool IsRecovering => mode == Mode.Recovering;
 
-    public void SetNormal() { mode = Mode.Normal; if (col) col.enabled = true; ApplyAnimator(); ResetGridAt(transform.position); }
-    public void SetScared() { mode = Mode.Scared; if (col) col.enabled = true; ApplyAnimator(); ResetGridAt(transform.position); }
-    public void SetRecovering() { mode = Mode.Recovering; if (col) col.enabled = true; ApplyAnimator(); ResetGridAt(transform.position); }
-    public void SetDead() { mode = Mode.Dead; if (col) col.enabled = false; ApplyAnimator(); fromWorld = toWorld = transform.position; t = 1f; }
+    public void SetNormal() { mode = Mode.Normal; if (col) col.enabled = true; ApplyAnimator(); ResetGrid(transform.position); }
+    public void SetScared() { mode = Mode.Scared; if (col) col.enabled = true; ApplyAnimator(); ResetGrid(transform.position); }
+    public void SetRecovering() { mode = Mode.Recovering; if (col) col.enabled = true; ApplyAnimator(); ResetGrid(transform.position); }
+    public void SetDead() { mode = Mode.Dead; if (col) col.enabled = false; ApplyAnimator(); fromWorld = toWorld = transform.position; t = 1f; hasExitedHouse = false; }
 
     static void Shuffle<T>(List<T> list, System.Random rng)
     {
