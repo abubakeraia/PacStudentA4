@@ -1,9 +1,7 @@
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class BgmPlayer : MonoBehaviour
 {
-
     [Header("Refs")]
     [SerializeField] private AudioSource source;
 
@@ -26,8 +24,8 @@ public class BgmPlayer : MonoBehaviour
 
     void Reset()
     {
-        if (!source) { source = GetComponent<AudioSource>(); }
-        if (!source) { GetComponentInChildren<AudioSource>(); }
+        if (!source) source = GetComponent<AudioSource>();
+        if (!source) source = GetComponentInChildren<AudioSource>();
 
         if (source)
         {
@@ -37,60 +35,84 @@ public class BgmPlayer : MonoBehaviour
         }
     }
 
-    private void Awake()
+    void Awake()
     {
-        if (!source) { Reset(); }
+        if (!source) Reset();
     }
-
 
     void Start()
     {
-        if (!playOnStart) { return; };
+        if (!playOnStart) return;
 
         if (isStartScene)
         {
-            Play(startBGM, loop: true);
+            Play(startBGM, true);
             return;
         }
 
         if (introBGM)
         {
-            Play(introBGM, loop: false);
-
-            //getting whichever is shorter & setting timer
+            Play(introBGM, false);
             _switchTimer = Mathf.Min(introBGM.length, introMaxLength);
-
+            _switchedToNormal = false;
         }
-
         else
         {
-            Play(normalGhostBGM, loop: true);
+            Play(normalGhostBGM, true);
+            _switchedToNormal = true;
         }
     }
 
-    private void Update()
+    void Update()
     {
         if (_switchTimer >= 0f && !_switchedToNormal)
         {
             _switchTimer -= Time.deltaTime;
+            if (_switchTimer <= 0f || !source.isPlaying)
+            {
+                Play(normalGhostBGM, true);
+                _switchedToNormal = true;
+                _switchTimer = -1f;
+            }
         }
+    }
 
-        //check timer finishe or audio finished
-        if (_switchTimer == 0f || !source.isPlaying)
-        {
-            Play(normalGhostBGM, true);
-            _switchedToNormal = true;
-            _switchTimer = -1f;
-        }
+    public void PlayNormalLoop()
+    {
+        _switchTimer = -1f;
+        _switchedToNormal = true;
+        Play(normalGhostBGM, true);
+    }
+
+    public void PlayScaredLoop()
+    {
+        _switchTimer = -1f;
+        _switchedToNormal = false;
+        Play(scaredGhostBGM, true);
+    }
+
+    public void PlayDeadLoop()
+    {
+        _switchTimer = -1f;
+        _switchedToNormal = false;
+        Play(deadGhostBGM, true);
     }
 
     void Play(AudioClip clip, bool loop)
     {
-        if (!source || !clip) { Debug.LogError("No Audio source or clip assigned.", this);  return; }
-
+        if (!source || !clip) return;
         source.Stop();
         source.clip = clip;
         source.loop = loop;
         source.Play();
     }
+
+    public void StopAll()
+    {
+        if (!source) return;
+        source.loop = false;
+        source.Stop();
+        source.clip = null;  
+    }
+
 }
