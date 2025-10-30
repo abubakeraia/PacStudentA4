@@ -3,12 +3,26 @@ using System.Collections;
 
 public class ScareManager : MonoBehaviour
 {
+    public enum Phase { None, Scared, Recovering }
+
     public float scaredDuration = 10f;
     public float recoveringLastSeconds = 3f;
     public HUDController hud;
-    public BgmPlayer bgm;   
+    public BgmPlayer bgm;
 
     Coroutine co;
+    float remaining;
+
+    public bool IsActive => remaining > 0f;
+    public float Remaining => Mathf.Max(0f, remaining);
+    public Phase CurrentPhase
+    {
+        get
+        {
+            if (remaining <= 0f) return Phase.None;
+            return remaining <= recoveringLastSeconds ? Phase.Recovering : Phase.Scared;
+        }
+    }
 
     public void TriggerScared()
     {
@@ -19,31 +33,24 @@ public class ScareManager : MonoBehaviour
     IEnumerator RunScared()
     {
         var ghosts = FindObjectsOfType<GhostController>();
-        Debug.Log($"ScareManager: ghosts found = {ghosts.Length}");
-
         foreach (var g in ghosts) if (!g.IsDead) g.SetScared();
 
         if (bgm) bgm.PlayScaredLoop();
         if (hud) hud.StartScared(scaredDuration);
 
-        float t = scaredDuration;
-        bool recoveringSet = false;
-
-        while (t > 0f)
+        remaining = scaredDuration;
+        while (remaining > 0f)
         {
-            t -= Time.deltaTime;
-
-            if (!recoveringSet && t <= recoveringLastSeconds)
-            {
+            remaining -= Time.deltaTime;
+            if (remaining <= recoveringLastSeconds)
                 foreach (var g in ghosts) if (!g.IsDead) g.SetRecovering();
-                recoveringSet = true;
-            }
             yield return null;
         }
 
         foreach (var g in ghosts) if (!g.IsDead) g.SetNormal();
         if (bgm) bgm.PlayNormalLoop();
 
+        remaining = 0f;
         co = null;
     }
 }

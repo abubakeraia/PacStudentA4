@@ -22,7 +22,7 @@ public class PacStudentController : MonoBehaviour
     public Vector3 explicitStartWorld;
 
     [Header("Animator")]
-    public Animator animator;        // expects int "dir": 0=Down,1=Left,2=Up,3=Right; bool "isDead"
+    public Animator animator;
 
     [Header("Debug (read-only)")]
     public Dir lastInput = Dir.None;
@@ -35,7 +35,6 @@ public class PacStudentController : MonoBehaviour
     public float bumpCooldown = 0.05f;
 
     float lastBumpTime = -999f;
-
 
     Vector2Int gridPos;
     Vector3 fromWorld, toWorld;
@@ -99,7 +98,7 @@ public class PacStudentController : MonoBehaviour
 
         if (!IsCellWalkable(next, dir))
         {
-            PlayWallBump(dir);  
+            PlayWallBump(dir);
             return false;
         }
 
@@ -114,20 +113,32 @@ public class PacStudentController : MonoBehaviour
         return true;
     }
 
-
     void SetAnimatorDir(Dir d)
     {
         if (!animator) return;
         int v = (d == Dir.Down) ? 0 :
                 (d == Dir.Left) ? 1 :
-                (d == Dir.Up) ? 2 : 3; 
-        animator.SetInteger("Dir", v);  
+                (d == Dir.Up) ? 2 : 3;
+        animator.SetInteger("Dir", v);
     }
 
     public void Die()
     {
-        if (animator) animator.SetBool("IsDead", true); 
+        if (animator) animator.SetBool("IsDead", true);
     }
+
+    public void ResetTo(Vector3 worldPos)
+    {
+        transform.position = worldPos;
+        gridPos = WorldToGrid(worldPos);
+        fromWorld = toWorld = GridToWorld(gridPos);
+        t = 1f;
+
+        currentInput = Dir.None;
+        lastInput = Dir.None;       
+        SetAnimatorDir(startFacing);   
+    }
+
 
     Vector2Int ToDelta(Dir d)
     {
@@ -222,5 +233,4 @@ public class PacStudentController : MonoBehaviour
             default: return Vector3.zero;
         }
     }
-
 }
