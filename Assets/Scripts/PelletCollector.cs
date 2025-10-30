@@ -7,6 +7,7 @@ public class PelletCollector : MonoBehaviour
     public Transform pac;
     public Tilemap[] pelletTilemaps;
     public HUDController hud;
+    public GameManager gm;
 
     [Header("Settings")]
     public int pelletScore = 10;
@@ -20,6 +21,7 @@ public class PelletCollector : MonoBehaviour
     void Start()
     {
         if (!pac) pac = GameObject.FindGameObjectWithTag("Player")?.transform;
+        if (!gm) gm = FindObjectOfType<GameManager>();
         lastTm = null;
         lastCell = new Vector3Int(int.MinValue, int.MinValue, 0);
     }
@@ -40,6 +42,7 @@ public class PelletCollector : MonoBehaviour
             {
                 tm.SetTile(cell, null);
                 hud?.AddScore(pelletScore);
+                gm?.OnPelletEaten();
 
                 var p = tm.GetCellCenterWorld(cell);
                 if (pelletSfx) AudioSource.PlayClipAtPoint(pelletSfx, p, pelletSfxVolume);

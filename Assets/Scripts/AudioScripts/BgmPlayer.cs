@@ -106,4 +106,13 @@ public class BgmPlayer : MonoBehaviour
         source.loop = loop;
         source.Play();
     }
+
+    public void StopAll()
+    {
+        if (!source) return;
+        source.loop = false;
+        source.Stop();
+        source.clip = null;  
+    }
+
 }

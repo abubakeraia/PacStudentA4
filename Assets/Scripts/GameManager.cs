@@ -1,13 +1,39 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
+using UnityEngine.Tilemaps;
+using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
+    [Header("Core")]
     public HUDController hud;
     public LivesDisplay livesDisplay;
     public string levelName = "Level 1";
 
+    [Header("Actors")]
+    public PacStudentController pac;
+    public GhostController[] ghosts;
+    public BgmPlayer bgm;
+
+    [Header("Pellets")]
+    public Tilemap[] pelletTilemaps;
+
+    [Header("Game Over UI")]
+    public GameObject gameOverPanel;
+    public TextMeshProUGUI gameOverText;
+    public float gameOverHoldSeconds = 3f;
+    public string startSceneName = "StartScene";
+
     int lives = 3;
     bool playing;
+    int pelletsRemaining;
+
+    bool hasStartedRound = false;
+    bool hasEatenAnyPellet = false;
+    bool pelletCountInitialized = false;
+
+    public bool IsPlaying => playing;
 
     void Start()
     {
@@ -15,16 +41,79 @@ public class GameManager : MonoBehaviour
         if (hud) hud.gameObject.SetActive(true);
         if (livesDisplay) livesDisplay.SetLives(lives);
         if (hud) hud.gameTimerText.text = "Time: 00:00:00";
-        playing = true;
+        playing = false;
+
+        pelletsRemaining = CountAllPellets();
+        if (gameOverPanel) gameOverPanel.SetActive(false);
+
+        Freeze(true);
     }
 
-    public void OnPelletEaten() { if (!playing) return; hud.AddScore(10); }
-    public void OnCherryEaten() { if (!playing) return; hud.AddScore(100); }
-    public void OnPowerPillEaten() { if (!playing) return; hud.AddScore(50); hud.StartScared(10f); }
+    public void BeginRound()
+    {
+        pelletsRemaining = CountAllPellets();
+        hasEatenAnyPellet = false;
+        hasStartedRound = true;
+        pelletCountInitialized = false;
+
+        if (hud) { hud.ResetTimer(); hud.StartTimer(); }
+        if (bgm) bgm.PlayNormalLoop();
+        Freeze(false);
+        playing = true;
+
+        if (gameOverPanel) gameOverPanel.SetActive(false);
+    }
+
+    int CountAllPellets()
+    {
+        if (pelletTilemaps == null) return 0;
+        int total = 0;
+        foreach (var tm in pelletTilemaps)
+        {
+            if (!tm) continue;
+            var b = tm.cellBounds;
+            foreach (var p in b.allPositionsWithin)
+                if (tm.HasTile(p)) total++;
+        }
+        return total;
+    }
+
+    public void OnPelletEaten()
+    {
+        if (!playing || !hasStartedRound) return;
+
+        if (!pelletCountInitialized)
+        {
+            pelletsRemaining = Mathf.Max(0, CountAllPellets() - 1);
+            pelletCountInitialized = true;
+            hasEatenAnyPellet = true;
+            hud.AddScore(10);
+            if (pelletsRemaining == 0) OnAllPelletsCleared();
+            return;
+        }
+
+        hasEatenAnyPellet = true;
+        hud.AddScore(10);
+        pelletsRemaining = Mathf.Max(0, pelletsRemaining - 1);
+        if (pelletsRemaining == 0 && hasEatenAnyPellet) OnAllPelletsCleared();
+    }
+
+    public void OnCherryEaten()
+    {
+        if (!playing || !hasStartedRound) return;
+        hud.AddScore(100);
+    }
+
+    public void OnPowerPillEaten()
+    {
+        if (!playing || !hasStartedRound) return;
+        hud.AddScore(50);
+        hud.StartScared(10f);
+    }
 
     public void OnPlayerCaught()
     {
-        if (!playing) return;
+        if (!playing || !hasStartedRound) return;
         lives--;
         if (livesDisplay) livesDisplay.SetLives(lives);
         if (lives <= 0) GameOver();
@@ -32,13 +121,50 @@ public class GameManager : MonoBehaviour
 
     public void OnAllPelletsCleared()
     {
-        if (playing) GameOver();
+        if (playing && hasStartedRound) GameOver();
     }
 
     void GameOver()
     {
+        if (!playing) return;
         playing = false;
+        StartCoroutine(GameOverFlow());
+    }
+
+    IEnumerator GameOverFlow()
+    {
+        if (hud) hud.StopTimer();
+
+        Freeze(true);
+        if (bgm) bgm.StopAll();
+
+        if (gameOverPanel) gameOverPanel.SetActive(true);
+        if (gameOverText) gameOverText.text = "GAME OVER";
+
         SaveBest();
+
+        yield return new WaitForSecondsRealtime(gameOverHoldSeconds);
+        SceneManager.LoadScene(startSceneName);
+    }
+
+    public void Freeze(bool on)
+    {
+        if (pac)
+        {
+            var rb = pac.GetComponent<Rigidbody2D>();
+            pac.enabled = !on;
+            if (rb) rb.simulated = !on;
+        }
+        if (ghosts != null)
+        {
+            foreach (var g in ghosts)
+            {
+                if (!g) continue;
+                if (g.animator) g.animator.speed = on ? 0f : 1f;
+                var rb = g.GetComponent<Rigidbody2D>();
+                if (rb && on) { rb.velocity = Vector2.zero; rb.angularVelocity = 0f; }
+            }
+        }
     }
 
     void SaveBest()
