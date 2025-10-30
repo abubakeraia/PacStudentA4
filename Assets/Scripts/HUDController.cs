@@ -31,5 +31,6 @@ public class HUDController : MonoBehaviour
     public int GetScore() { return score; }
     public string GetClock() { return ToClock(t); }
 
-    string ToClock(float s) { int ms = Mathf.FloorToInt((s % 1f) * 100f), sec = Mathf.FloorToInt(s) % 60, min = Mathf.FloorToInt(s / 60f); return $"{min:00}:{sec:00}:{ms:00}"; }
+    string ToClock(float s) { int ms = Mathf.FloorToInt((s % 1f) * 100f), sec = Mathf.FloorToInt(s) % 60, min = Mathf.FloorToInt(s / 60f); 
+        return $"{min:00}:{sec:00}:{ms:00}"; }
 }
