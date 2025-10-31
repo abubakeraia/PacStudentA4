@@ -1942,7 +1942,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   level1SceneName: Level1
-  innovationSceneName: InnovationScene
+  innovationSceneName: Level2
 --- !u!1 &1255930162
 GameObject:
   m_ObjectHideFlags: 0

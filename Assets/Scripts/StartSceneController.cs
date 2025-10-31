@@ -7,10 +7,11 @@ public class StartSceneController : MonoBehaviour
 {
     [Header("Scene names")]
     public string level1SceneName = "Level1";
+    public string level2SceneName = "Level2";
     public string innovationSceneName = "InnovationScene";
 
     public void PlayLevel1() => StartCoroutine(LoadAfterClickSfx(level1SceneName));
-    public void PlayLevel2() => StartCoroutine(LoadAfterClickSfx(innovationSceneName));
+    public void PlayLevel2() => StartCoroutine(LoadAfterClickSfx(level2SceneName));
     public void ReturnToStart() => StartCoroutine(LoadAfterClickSfx("StartScene"));
 
     private System.Collections.IEnumerator LoadAfterClickSfx(string sceneName)

@@ -23,28 +23,52 @@ public class GhostStateController : MonoBehaviour
 
     public void SetNormal()
     {
-        if (!animator) return;
-        animator.SetBool(hashIsDead, false);
-        animator.SetBool(hashIsScared, false);
-        animator.SetBool(hashIsRecovering, false);
+        // Ensure animator is found if not already set
+        if (!animator) animator = GetComponent<Animator>();
+        if (!animator) animator = GetComponentInChildren<Animator>();
+        
+        if (animator)
+        {
+            animator.SetBool(hashIsDead, false);
+            animator.SetBool(hashIsScared, false);
+            animator.SetBool(hashIsRecovering, false);
+        }
+        
+        // Always call mover.SetNormal() to ensure mode is updated and animator is applied
         if (mover) mover.SetNormal();
     }
 
     public void SetScared()
     {
-        if (!animator) return;
-        animator.SetBool(hashIsDead, false);
-        animator.SetBool(hashIsScared, true);
-        animator.SetBool(hashIsRecovering, false);
+        // Ensure animator is found if not already set
+        if (!animator) animator = GetComponent<Animator>();
+        if (!animator) animator = GetComponentInChildren<Animator>();
+        
+        if (animator)
+        {
+            animator.SetBool(hashIsDead, false);
+            animator.SetBool(hashIsScared, true);
+            animator.SetBool(hashIsRecovering, false);
+        }
+        
+        // Always call mover.SetScared() to ensure mode is updated and animator is applied
         if (mover) mover.SetScared();
     }
 
     public void SetRecovering()
     {
-        if (!animator) return;
-        animator.SetBool(hashIsDead, false);
-        animator.SetBool(hashIsScared, true);
-        animator.SetBool(hashIsRecovering, true);
+        // Ensure animator is found if not already set
+        if (!animator) animator = GetComponent<Animator>();
+        if (!animator) animator = GetComponentInChildren<Animator>();
+        
+        if (animator)
+        {
+            animator.SetBool(hashIsDead, false);
+            animator.SetBool(hashIsScared, true);
+            animator.SetBool(hashIsRecovering, true);
+        }
+        
+        // Always call mover.SetRecovering() to ensure mode is updated and animator is applied
         if (mover) mover.SetRecovering();
     }
 

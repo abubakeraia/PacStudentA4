@@ -60,6 +60,10 @@ public class GameManager : MonoBehaviour
         playing = true;
 
         if (gameOverPanel) gameOverPanel.SetActive(false);
+        
+        // Start SpeedBanana activation sequence
+        var speedBananaManager = FindObjectOfType<SpeedBananaManager>();
+        speedBananaManager?.BeginGame();
     }
 
     int CountAllPellets()
@@ -114,7 +118,18 @@ public class GameManager : MonoBehaviour
         if (!playing || !hasStartedRound) return;
         lives--;
         if (livesDisplay) livesDisplay.SetLives(lives);
+        
+        // Notify BonusLifeManager to activate a bonus life when player loses a life
+        var bonusLifeManager = FindObjectOfType<BonusLifeManager>();
+        bonusLifeManager?.OnLifeLost();
+        
         if (lives <= 0) GameOver();
+    }
+
+    public void AddLife()
+    {
+        lives++;
+        if (livesDisplay) livesDisplay.SetLives(lives);
     }
 
     public void OnAllPelletsCleared()
