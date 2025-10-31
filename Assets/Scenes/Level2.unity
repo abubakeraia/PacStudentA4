@@ -328,10 +328,9 @@ MonoBehaviour:
   stepsPerSecond: 6
   scaredSpeedScale: 0.75
   recoveringSpeedScale: 0.9
-  ghostId: 1
+  ghostId: 3
   topExitPoint: {fileID: 1193901823}
   bottomExitPoint: {fileID: 2100391638}
-  behaviorIndex: 3
   returnPoint: {fileID: 830118853}
   deadReturnSpeed: 6
   arriveRadius: 0.15
@@ -2734,10 +2733,9 @@ MonoBehaviour:
   stepsPerSecond: 6
   scaredSpeedScale: 0.75
   recoveringSpeedScale: 0.9
-  ghostId: 1
+  ghostId: 2
   topExitPoint: {fileID: 1193901823}
   bottomExitPoint: {fileID: 2100391638}
-  behaviorIndex: 2
   returnPoint: {fileID: 1688755135}
   deadReturnSpeed: 6
   arriveRadius: 0.15
@@ -5439,7 +5437,6 @@ MonoBehaviour:
   ghostId: 1
   topExitPoint: {fileID: 1193901823}
   bottomExitPoint: {fileID: 2100391638}
-  behaviorIndex: 1
   returnPoint: {fileID: 1923299926}
   deadReturnSpeed: 6
   arriveRadius: 0.12
@@ -24264,10 +24261,9 @@ MonoBehaviour:
   stepsPerSecond: 6
   scaredSpeedScale: 0.75
   recoveringSpeedScale: 0.9
-  ghostId: 1
+  ghostId: 4
   topExitPoint: {fileID: 1193901823}
   bottomExitPoint: {fileID: 2100391638}
-  behaviorIndex: 4
   returnPoint: {fileID: 1801584120}
   deadReturnSpeed: 6
   arriveRadius: 0.15

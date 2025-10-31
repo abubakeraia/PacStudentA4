@@ -92,8 +92,15 @@ public class PacGhostCollisionHandler : MonoBehaviour
 
         if (pacAnimator) pacAnimator.SetBool("IsDead", true);
 
-        foreach (var gg in ghosts) if (gg && gg.animator) gg.animator.speed = 0f;
+        // Freeze all ghosts: disable their controllers AND freeze animations
+        foreach (var gg in ghosts)
+        {
+            if (!gg) continue;
+            if (gg.animator) gg.animator.speed = 0f;
+            gg.enabled = false; // Disable GhostController to prevent movement during death sequence
+        }
 
+        // Play particle effect at death position
         if (deathVfxPrefab)
         {
             var vfx = Instantiate(deathVfxPrefab, transform.position, Quaternion.identity);
@@ -116,7 +123,14 @@ public class PacGhostCollisionHandler : MonoBehaviour
         yield return WaitForAnyKey();
 
         if (pacController) pacController.enabled = true;
-        foreach (var gg in ghosts) if (gg && gg.animator) gg.animator.speed = 1f;
+        
+        // Re-enable all ghosts after waiting for input
+        foreach (var gg in ghosts)
+        {
+            if (!gg) continue;
+            gg.enabled = true; // Re-enable GhostController
+            if (gg.animator) gg.animator.speed = 1f;
+        }
 
         dying = false;
     }

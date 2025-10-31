@@ -71,8 +71,17 @@ public class RoundStartController : MonoBehaviour
 
                 var rb = g.GetComponent<Rigidbody2D>();
                 if (rb) { if (on) { rb.linearVelocity = Vector2.zero; rb.angularVelocity = 0f; } }
+                
+                // Disable GhostController component specifically to prevent movement
+                var ghostController = g.GetComponent<GhostController>();
+                if (ghostController)
+                {
+                    ghostController.enabled = !on;
+                }
+                
+                // Also disable any other MonoBehaviour components (fallback)
                 var ai = g.GetComponent<MonoBehaviour>();
-                if (ai && ai != g) ai.enabled = !on;
+                if (ai && ai != g && ai != ghostController) ai.enabled = !on;
             }
         }
     }

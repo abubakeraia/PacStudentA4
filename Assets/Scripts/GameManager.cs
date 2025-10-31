@@ -33,6 +33,8 @@ public class GameManager : MonoBehaviour
     bool hasEatenAnyPellet = false;
     bool pelletCountInitialized = false;
 
+    public bool HasStartedRound() => hasStartedRound;
+
     void Start()
     {
         if (hud) hud.AddScore(0);

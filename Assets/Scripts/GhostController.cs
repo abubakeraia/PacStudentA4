@@ -13,14 +13,12 @@ public class GhostController : MonoBehaviour
     public LayerMask teleporterMask;
     public Collider2D ghostHouseArea;
 
-    public float stepsPerSecond = 6f;
-    public float scaredSpeedScale = 0.75f;
-    public float recoveringSpeedScale = 0.9f;
+    public float stepsPerSecond = 6f; // Base speed, will be set relative to PacStudent
+    public float scaredSpeedScale = 0.5f; // 50% of normal speed
+    public float recoveringSpeedScale = 0.5f; // Same as scared
     public int ghostId = 1;
     public Transform topExitPoint;
     public Transform bottomExitPoint;
-
-    public int behaviorIndex = 1;
 
     public Transform returnPoint;
     public float deadReturnSpeed = 6f;
@@ -59,17 +57,45 @@ public class GhostController : MonoBehaviour
         ApplyAnimator();
     }
 
+    static GameManager cachedGameManager;
+    static float lastGameManagerCacheTime = -1f;
+    static float gameManagerCacheRefreshInterval = 0.1f; // Cache for 0.1 seconds
+    
     void Update()
     {
+        // Check if game round has started - ghosts should not move until countdown finishes
+        // Cache GameManager to avoid FindObjectOfType every frame
+        if (cachedGameManager == null || Time.time - lastGameManagerCacheTime > gameManagerCacheRefreshInterval)
+        {
+            cachedGameManager = FindObjectOfType<GameManager>();
+            lastGameManagerCacheTime = Time.time;
+        }
+        
+        if (cachedGameManager != null && !cachedGameManager.HasStartedRound())
+        {
+            return; // Don't allow movement until round starts
+        }
+
         if (mode == Mode.Dead)
         {
             DeadStraightReturn();
             return;
         }
 
-        float spd = stepsPerSecond;
-        if (mode == Mode.Scared) spd *= scaredSpeedScale;
-        else if (mode == Mode.Recovering) spd *= recoveringSpeedScale;
+        // Get PacStudent speed to calculate relative speeds
+        float pacSpeed = GetPacStudentSpeed();
+        float normalSpeed = pacSpeed * 0.9f; // Normal: 90% of PacStudent
+        
+        float spd;
+        if (mode == Mode.Scared || mode == Mode.Recovering || mode == Mode.Dead)
+        {
+            spd = normalSpeed * scaredSpeedScale; // Scared/Recovery/Dead: 50% of Normal
+        }
+        else
+        {
+            spd = normalSpeed; // Normal: 90% of PacStudent
+        }
+        
         float stepT = spd * Time.deltaTime;
 
         SyncPhase();
@@ -77,8 +103,8 @@ public class GhostController : MonoBehaviour
         if (ghostHouseArea && !hasExitedHouse && ghostHouseArea.OverlapPoint(transform.position))
         {
             if (exitHoldTimer > 0f) { exitHoldTimer -= Time.deltaTime; return; }
-            // Use slower exit speed - combine exitSpeedScale with scaredSpeedScale for slower movement
-            float exitSpeed = stepsPerSecond * exitSpeedScale * scaredSpeedScale * Time.deltaTime;
+            // Use slower exit speed based on current calculated speed
+            float exitSpeed = spd * exitSpeedScale * Time.deltaTime;
             ExitHouse(exitSpeed);
             return;
         }
@@ -96,9 +122,14 @@ public class GhostController : MonoBehaviour
         // Update dead timer
         deadTimer += Time.deltaTime;
         
+        // Dead ghosts move at same speed as scared (50% of normal)
+        float pacSpeed = GetPacStudentSpeed();
+        float normalSpeed = pacSpeed * 0.9f; // Normal: 90% of PacStudent
+        float deadSpeed = normalSpeed * scaredSpeedScale; // Dead: 50% of Normal (same as Scared)
+        
         Vector3 target = returnPoint.position;
         Vector3 pos = transform.position;
-        Vector3 next = Vector3.MoveTowards(pos, target, deadReturnSpeed * Time.deltaTime);
+        Vector3 next = Vector3.MoveTowards(pos, target, deadSpeed * cellSize * Time.deltaTime);
         Vector3 delta = target - pos;
         if (animator)
         {
@@ -161,31 +192,34 @@ public class GhostController : MonoBehaviour
     {
         if (!pac) pac = GameObject.FindGameObjectWithTag("Player")?.transform;
 
-        // When scared or recovering, ghosts should avoid PacMan (flee behavior)
+        // When scared or recovering, all ghosts use Ghost 1 behavior (random direction that maintains or increases distance)
         if (mode == Mode.Scared || mode == Mode.Recovering)
         {
-            // Scared ghosts actively move away from PacMan
-            StepFarthestFromPac();
+            StepRandomFartherOrEqual();
             return;
         }
 
-        // Normal behavior based on behaviorIndex
-        switch (behaviorIndex)
+        // Normal behavior based on ghostId (not behaviorIndex)
+        switch (ghostId)
         {
             case 1:
-                StepFarthestFromPac();
+                // Ghost 1: Random direction that maintains or increases distance from PacStudent
+                StepRandomFartherOrEqual();
                 break;
             case 2:
-                StepClosestToPac();
+                // Ghost 2: Random direction that maintains or decreases distance from PacStudent
+                StepRandomCloserOrEqual();
                 break;
             case 3:
+                // Ghost 3: Completely random direction
                 StepRandom();
                 break;
             case 4:
-                StepClockwiseBias();
+                // Ghost 4: Clockwise around the outside wall
+                StepClockwiseWallFollowing();
                 break;
             default:
-                StepClosestToPac();
+                StepRandom();
                 break;
         }
     }
@@ -198,18 +232,64 @@ public class GhostController : MonoBehaviour
         StartStep(options[0]);
     }
 
-    void StepClockwiseBias()
+    void StepClockwiseWallFollowing()
     {
+        // Ghost 4 behavior: Move clockwise around the outside wall
+        // Clockwise priority: Right -> Down -> Left -> Up
         var options = GetWalkableNeighbours(false, true);
         if (options.Count == 0) return;
-        Dir[] order = new Dir[] { Dir.Up, Dir.Right, Dir.Down, Dir.Left };
-        for (int i = 0; i < order.Length; i++)
+        
+        // Priority order for clockwise movement
+        Dir[] clockwiseOrder = new Dir[] { Dir.Right, Dir.Down, Dir.Left, Dir.Up };
+        
+        // First, try to move in clockwise priority order
+        foreach (var dir in clockwiseOrder)
         {
-            var dir = order[i];
-            if (dir == Opposite(currentDir)) continue;
-            if (options.Contains(dir)) { StartStep(dir); return; }
+            if (dir == Opposite(currentDir)) continue; // Don't reverse
+            if (options.Contains(dir))
+            {
+                // Check if this direction follows a wall (prefer wall-following)
+                Vector2Int nextCell = gridPos + ToDelta(dir);
+                Vector3 nextWorld = GridToWorld(nextCell);
+                
+                // Prefer directions where there's a wall to the right (clockwise means keeping wall on right)
+                Dir rightOfDir = GetRightDirection(dir);
+                Vector2Int rightCell = nextCell + ToDelta(rightOfDir);
+                if (!IsCellWalkable(rightCell, false, true))
+                {
+                    // Wall to the right - this is good for clockwise movement
+                    StartStep(dir);
+                    return;
+                }
+            }
         }
+        
+        // If no wall-following option, just use clockwise priority
+        foreach (var dir in clockwiseOrder)
+        {
+            if (dir == Opposite(currentDir)) continue;
+            if (options.Contains(dir))
+            {
+                StartStep(dir);
+                return;
+            }
+        }
+        
+        // Fallback to any valid direction
         StartStep(options[0]);
+    }
+    
+    Dir GetRightDirection(Dir facing)
+    {
+        // Returns the direction to the right of the given direction (clockwise)
+        switch (facing)
+        {
+            case Dir.Up: return Dir.Right;
+            case Dir.Right: return Dir.Down;
+            case Dir.Down: return Dir.Left;
+            case Dir.Left: return Dir.Up;
+            default: return Dir.Right;
+        }
     }
 
     void StepClosestToPac()
@@ -228,8 +308,67 @@ public class GhostController : MonoBehaviour
         StartStep(best);
     }
 
+    void StepRandomFartherOrEqual()
+    {
+        // Ghost 1 behavior: Random direction that maintains or increases distance from PacStudent
+        var options = GetWalkableNeighbours(false, true);
+        if (options.Count == 0) return;
+        
+        Vector3 pacPos = pac ? pac.position : transform.position;
+        float currentDist = Vector3.SqrMagnitude(transform.position - pacPos);
+        
+        // Filter options to only include directions that maintain or increase distance
+        List<Dir> validOptions = new List<Dir>();
+        foreach (var d in options)
+        {
+            Vector3 pos = GridToWorld(gridPos + ToDelta(d));
+            float newDist = Vector3.SqrMagnitude(pos - pacPos);
+            if (newDist >= currentDist) // Maintains or increases distance
+            {
+                validOptions.Add(d);
+            }
+        }
+        
+        // If no valid options, allow all options (fallback)
+        if (validOptions.Count == 0) validOptions = options;
+        
+        // Randomly select from valid options
+        Shuffle(validOptions, rng);
+        StartStep(validOptions[0]);
+    }
+    
+    void StepRandomCloserOrEqual()
+    {
+        // Ghost 2 behavior: Random direction that maintains or decreases distance from PacStudent
+        var options = GetWalkableNeighbours(false, true);
+        if (options.Count == 0) return;
+        
+        Vector3 pacPos = pac ? pac.position : transform.position;
+        float currentDist = Vector3.SqrMagnitude(transform.position - pacPos);
+        
+        // Filter options to only include directions that maintain or decrease distance
+        List<Dir> validOptions = new List<Dir>();
+        foreach (var d in options)
+        {
+            Vector3 pos = GridToWorld(gridPos + ToDelta(d));
+            float newDist = Vector3.SqrMagnitude(pos - pacPos);
+            if (newDist <= currentDist) // Maintains or decreases distance
+            {
+                validOptions.Add(d);
+            }
+        }
+        
+        // If no valid options, allow all options (fallback)
+        if (validOptions.Count == 0) validOptions = options;
+        
+        // Randomly select from valid options
+        Shuffle(validOptions, rng);
+        StartStep(validOptions[0]);
+    }
+    
     void StepFarthestFromPac()
     {
+        // Legacy method - keeping for compatibility but not used in main behavior
         var options = GetWalkableNeighbours(false, true);
         if (options.Count == 0) return;
         Vector3 pacPos = pac ? pac.position : transform.position;
@@ -453,6 +592,29 @@ public class GhostController : MonoBehaviour
             case Dir.Right: return new Vector2Int(1, 0);
             default: return Vector2Int.zero;
         }
+    }
+
+    float GetPacStudentSpeed()
+    {
+        // Get PacStudent's current speed (accounting for speed boost)
+        var pacController = pac ? pac.GetComponent<PacStudentController>() : null;
+        if (pacController == null)
+        {
+            pacController = FindObjectOfType<PacStudentController>();
+        }
+        
+        if (pacController != null)
+        {
+            float baseSpeed = pacController.speedCellsPerSecond;
+            if (pacController.IsSpeedBoosted)
+            {
+                baseSpeed *= pacController.speedBoostMultiplier;
+            }
+            return baseSpeed;
+        }
+        
+        // Fallback: return default speed if PacStudent not found
+        return 8f; // Default PacStudent speed
     }
 
     static Dir Opposite(Dir d)
